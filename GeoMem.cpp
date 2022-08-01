@@ -13,6 +13,7 @@ GeoMem::GeoMem() {
 /// </summary>
 /// <param name="procName">use L macro</param>
 GeoMem::GeoMem(const wchar_t* procName) {
+	this->m_procName = procName;
 	GeoMem::GetProcIdByName(procName);
 }
 
@@ -26,6 +27,10 @@ HANDLE GeoMem::GetHandle() {
 
 DWORD GeoMem::GetProcId() {
 	return this->m_procId;
+}
+
+const wchar_t* GeoMem::GetProcName() {
+	return this->m_procName;
 }
 
 DWORD GeoMem::GetProcIdByName(const wchar_t* procName) {
@@ -68,4 +73,104 @@ uintptr_t GeoMem::FindAddresMultiPointer(uintptr_t address, std::vector<unsigned
 		address += offsets[i];
 	}
 	return address;
+}
+
+void* GeoMem::PatternScan(char* base, size_t size, const char* pattern, const char* mask)
+{
+	size_t patternLength = strlen(mask);
+
+	for (unsigned int i = 0; i < size - patternLength; i++)
+	{
+		bool found = true;
+		for (unsigned int j = 0; j < patternLength; j++)
+		{
+			if (mask[j] != '?' && pattern[j] != *(base + i + j))
+			{
+				found = false;
+				break;
+			}
+		}
+		if (found)
+		{
+			return (void*)(base + i);
+		}
+	}
+	return nullptr;
+}
+
+void* GeoMem::PatternScanEx(uintptr_t begin, uintptr_t end, const char* pattern, const char* mask)
+{
+	uintptr_t currentChunk = begin;
+	SIZE_T bytesRead;
+
+	while (currentChunk < end)
+	{
+		char buffer[4096];
+
+		DWORD oldprotect;
+		VirtualProtectEx(this->m_handle, (void*)currentChunk, sizeof(buffer), PAGE_EXECUTE_READWRITE, &oldprotect);
+		ReadProcessMemory(this->m_handle, (void*)currentChunk, &buffer, sizeof(buffer), &bytesRead);
+		VirtualProtectEx(this->m_handle, (void*)currentChunk, sizeof(buffer), oldprotect, &oldprotect);
+
+		if (bytesRead == 0)
+		{
+			return nullptr;
+		}
+
+		void* internalAddress = PatternScan((char*)&buffer, bytesRead, pattern, mask);
+
+		if (internalAddress != nullptr)
+		{
+			//calculate from internal to external
+			uintptr_t offsetFromBuffer = (uintptr_t)internalAddress - (uintptr_t)&buffer;
+			return (void*)(currentChunk + offsetFromBuffer);
+		}
+		else
+		{
+			//advance to next chunk
+			currentChunk = currentChunk + bytesRead;
+		}
+	}
+	return nullptr;
+}
+
+void* GeoMem::PatternScanExModule(const wchar_t* moduleName, const char* pattern, const char* mask)
+{
+	MODULEENTRY32 modEntry = GeoMem::GetModuleByName(moduleName);
+
+	if (!modEntry.th32ModuleID)
+	{
+		return nullptr;
+	}
+
+	uintptr_t begin = (uintptr_t)modEntry.modBaseAddr;
+	uintptr_t end = begin + modEntry.modBaseSize;
+	return PatternScanEx(begin, end, pattern, mask);
+}
+
+MODULEENTRY32 GeoMem::GetModuleByName(const wchar_t* moduleName)
+{
+	MODULEENTRY32 modEntry = { 0 };
+
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, this->m_procId);
+
+	if (hSnapshot != INVALID_HANDLE_VALUE)
+	{
+		MODULEENTRY32 curr = { 0 };
+
+		curr.dwSize = sizeof(MODULEENTRY32);
+		if (Module32First(hSnapshot, &curr))
+		{
+			do
+			{
+				if (!wcscmp(curr.szModule, moduleName))
+				{
+					modEntry = curr;
+					break;
+				}
+			} while (Module32Next(hSnapshot, &curr));
+		}
+		CloseHandle(hSnapshot);
+	}
+	return modEntry;
 }

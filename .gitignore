@@ -31,11 +31,10 @@
 *.out
 *.app
 
-# Juste pour ce git
-/*.cpp
-
 # Folder
 Debug/
 Release/
 .vs/
 x64/
+
+MyOwnMemClass

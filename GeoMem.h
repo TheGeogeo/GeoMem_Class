@@ -17,11 +17,17 @@ public:
 	HANDLE GetHandle();
 	DWORD GetProcId();
 
-	template <class typeClass>
-	typeClass ReadEx(uintptr_t address);
+	template <typename typeClass>
+	typeClass ReadEx(uintptr_t address) {
+		typeClass ret;
+		ReadProcessMemory(this->m_handle, (LPCVOID)address, &ret, sizeof(ret), NULL);
+		return ret;
+	}
 
-	template <class typeClass>
-	bool WriteEx(uintptr_t address, typeClass value);
+	template <typename typeClass>
+	bool WriteEx(uintptr_t address, typeClass value) {
+		return WriteProcessMemory(this->m_handle, (LPVOID)address, &value, sizeof(value), NULL);
+	}
 
 	DWORD GetProcIdByName(const wchar_t* procName);
 	uintptr_t GetModuleAddress(const wchar_t* modName);

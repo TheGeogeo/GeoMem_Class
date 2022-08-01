@@ -1,7 +1,11 @@
 #include "GeoMem.h"
 
+/// <summary>
+/// If you init with basic instance use : GetProcIdByName
+/// </summary>
 GeoMem::GeoMem() {
 	this->m_handle = NULL;
+	this->m_procId = NULL;
 }
 
 /// <summary>

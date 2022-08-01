@@ -36,3 +36,6 @@ Debug/
 Release/
 .vs/
 x64/
+
+#juste pour ce git
+MyOwnMemClass.cpp

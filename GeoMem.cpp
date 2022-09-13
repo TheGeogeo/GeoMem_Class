@@ -174,3 +174,21 @@ MODULEENTRY32 GeoMem::GetModuleByName(const wchar_t* moduleName)
 	}
 	return modEntry;
 }
+
+void GeoMem::PlaceJMP(BYTE* Address, DWORD jumpTo, DWORD length = 5)
+{
+	DWORD dwOldProtect, dwBkup, dwRelAddr;
+
+	VirtualProtect(Address, length, PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	dwRelAddr = (DWORD)(jumpTo - (DWORD)Address) - 5;
+
+	*Address = 0xE9;
+
+	*((DWORD*)(Address + 0x1)) = dwRelAddr;
+
+	for (DWORD x = 0x5; x < length; x++)
+		*(Address + x) = 0x90;
+
+	VirtualProtect(Address, length, dwOldProtect, &dwBkup);
+}

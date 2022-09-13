@@ -40,4 +40,6 @@ public:
 	void* PatternScan(char* base, size_t size, const char* pattern, const char* mask);
 	void* PatternScanEx(uintptr_t begin, uintptr_t end, const char* pattern, const char* mask);
 	void* PatternScanExModule(const wchar_t* moduleName, const char* pattern, const char* mask);
+
+	void PlaceJMP(BYTE* Address, DWORD jumpTo, DWORD length = 5);
 };
